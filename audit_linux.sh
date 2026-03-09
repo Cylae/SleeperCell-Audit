@@ -432,7 +432,7 @@ PING_COUNT="$CFG_PING"
 
 if [[ $NO_LOG -eq 0 ]]; then
     mkdir -p "$LOG_DIR"
-    LOG_FILE="${LOG_DIR}/audit_$(date '+%Y%m%d_%H%M%S').log"
+    LOG_FILE="${LOG_DIR}/audit_${SERVER_IP}_$(date '+%Y%m%d_%H%M%S').log"
 fi
 
 # ================================================================
@@ -605,9 +605,45 @@ else
 fi
 
 # ================================================================
-#  [4] NIC POWER MANAGEMENT
+#  [4] TRACEROUTE (first 5 hops)
 # ================================================================
-write_section "$(get_s nicSection)" 5
+write_section "$(get_s traceSection)" 5
+
+if command -v traceroute &>/dev/null; then
+    wh "       (running...)" "$DIM"
+    trace_out=$(traceroute -m 5 -w 2 "$SERVER_IP" 2>/dev/null | tail -n +2 | head -5 || true)
+    if [[ -n "$trace_out" ]]; then
+        while IFS= read -r line; do
+            wh "     $line" "$DIM"
+        done <<< "$trace_out"
+        report_set "Traceroute" "Completed"
+    else
+        wh "     (no hops captured)" "$DIM"
+        report_set "Traceroute" "No hops"
+    fi
+else
+    write_status_line "$(get_s notSupported)" "$(get_s traceNoCmd)" "warn"
+    report_set "Traceroute" "N/A"
+fi
+
+# ================================================================
+#  [5] DNS RESOLUTION
+# ================================================================
+write_section "$(get_s dnsSection)" 6
+
+if host "$SERVER_IP" &>/dev/null 2>&1; then
+    dns_result=$(host "$SERVER_IP" 2>/dev/null | head -1 || true)
+    write_status_line "$(get_s dnsOk)" "$dns_result" "ok"
+    report_set "DNS" "Resolved"
+else
+    write_status_line "$(get_s dnsFail)" "no PTR record / host unreachable" "warn"
+    report_set "DNS" "No PTR"
+fi
+
+# ================================================================
+#  [6] NIC POWER MANAGEMENT
+# ================================================================
+write_section "$(get_s nicSection)" 7
 
 if ! command -v ethtool &>/dev/null; then
     write_status_line "$(get_s notSupported)" "$(get_s nicNoCmd)" "warn"
@@ -675,15 +711,19 @@ if (( ${#REMEDIATION[@]} > 0 )); then
     printf "${CERR}  +%s+${R}\n" "$line_sum"
 
     if [[ $IS_ROOT -eq 1 ]]; then
-        printf "\n${CWARN}  [?] $(get_s runRemediation) ${R}"
-        read -r apply_fixes
-        if [[ "${apply_fixes,,}" == "y" || "${apply_fixes,,}" == "yes" ]]; then
-            wh ""
-            echo "$unique_remediations" | while read -r cmd; do
-                wh "      Executing: $cmd" "$DIM"
-                eval "$cmd" 2>/dev/null || wh "      -> Failed." "$CERR"
-            done
-            wh "  [OK] $(get_s remApplied)" "$COK"
+        if [ -t 0 ]; then
+            printf "\n${CWARN}  [?] $(get_s runRemediation) ${R}"
+            read -r apply_fixes
+            if [[ "${apply_fixes,,}" == "y" || "${apply_fixes,,}" == "yes" ]]; then
+                wh ""
+                echo "$unique_remediations" | while read -r cmd; do
+                    wh "      Executing: $cmd" "$DIM"
+                    eval "$cmd" 2>/dev/null || wh "      -> Failed." "$CERR"
+                done
+                wh "  [OK] $(get_s remApplied)" "$COK"
+            fi
+        else
+            wh "\n  [i] Non-interactive environment detected. Skipping auto-remediation prompt." "$DIM"
         fi
     fi
 else
@@ -694,7 +734,7 @@ wh "\n  $(get_s completed) $(date '+%H:%M:%S')" "$DIM"
 
 if [[ $EXPORT_JSON -eq 1 ]]; then
     mkdir -p "${LOG_DIR:-$SCRIPT_DIR}"
-    json_path="${LOG_DIR:-$SCRIPT_DIR}/audit_$(date '+%Y%m%d_%H%M%S').json"
+    json_path="${LOG_DIR:-$SCRIPT_DIR}/audit_${SERVER_IP}_$(date '+%Y%m%d_%H%M%S').json"
     if command -v python3 &>/dev/null; then
         # Build JSON using Python to ensure escaping
         json_str="{"

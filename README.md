@@ -26,9 +26,9 @@ These scripts automate a full `Flush -> Probe -> Measure` lifecycle to diagnose 
 
 - 🌐 **Bilingual UI**: Full support for both English and French outputs (`--lang fr`).
 - 💾 **Persistent Config**: Save your target IP and ports via an interactive menu (`--configure`) to a local JSON file so you don't have to retype them.
-- 🛠️ **Interactive Auto-Remediation**: Generates a safe playbook of commands specific to your anomalies. If run as Administrator/root, the scripts will prompt you `[y/N]` to safely apply the fixes automatically.
-- 📈 **Visual Profiling**: Beautiful CLI progress bars mapping latency spikes, **Packet Loss %**, and **Jitter** on the very first "cold start" packet.
-- 📤 **Machine-Readable Exports**: Use the `--export-json` / `-ExportJson` flag to dump the final audit summary to a JSON file for monitoring integrations.
+- 🛠️ **Interactive Auto-Remediation**: Generates a safe playbook of commands specific to your anomalies. If run as Administrator/root, the scripts will prompt you `[y/N]` to safely apply the fixes automatically (safely bypassed in non-interactive/cron environments).
+- 📈 **Deep Network Profiling**: Beautiful CLI progress bars mapping latency spikes, **Packet Loss %**, and **Jitter** on the very first "cold start" packet. Also conducts Layer 3 **DNS Resolution** checks and **Traceroutes**.
+- 📤 **Machine-Readable Exports**: Use the `--export-json` / `-ExportJson` flag to dump the final audit summary to a JSON file for monitoring integrations. Log and JSON exports are automatically tagged with the target IP (e.g. `audit_192.168.1.254_20260309.log`).
 - 🌍 **Cross-Platform**: Two perfectly synchronized scripts. Native `Bash` for Linux, native `.NET/PowerShell` for Windows.
 
 ---
