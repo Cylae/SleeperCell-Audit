@@ -48,10 +48,10 @@ function Save-Config ($cfg) { try { $cfg | ConvertTo-Json | Set-Content $ConfigP
 
 $S = @{
     en = @{
-        title="CONNECTIVITY & POWER MANAGEMENT AUDIT"; target="Target"; port="Port"; step="STEP"; adminOk="Running as Administrator"; adminWarn="Not Administrator - Mitigation restricted"; arpSection="ARP Resolution"; arpFlushed="Cache flushed for"; arpSkip="Skipping cache flush - requires elevation"; arpOk="ARP Resolved"; arpFail="ARP Failed"; routeSection="Routing Topology"; latSection="Latency Profile"; pings="pings"; firstPkt="First packet"; timeout="Timeout"; avgRest="Avg (rest)"; minMax="Min / Max"; spikeDelta="Spike delta"; spikeWarn="NIC likely power-saving"; latStable="Latency stable"; latFail="Insufficient replies"; tcpSection="TCP Port Probe"; portOpen="OPEN"; portClosed="CLOSED or Filtered"; httpSection="HTTP Reachability"; httpOk="HTTP responded"; httpFail="HTTP unreachable"; nicSection="Local NIC Power Management"; allowOff="Allow PC to turn off"; summaryTitle="AUDIT SUMMARY"; allOk="All checks passed."; someWarn="check(s) require attention."; remTitle="REMEDIATION PLAYBOOK (RUN AS ADMIN)"; remNone="SYSTEM FULLY OPTIMIZED - ZERO ANOMALIES DETECTED"
+        title="CONNECTIVITY & POWER MANAGEMENT AUDIT"; target="Target"; port="Port"; step="STEP"; adminOk="Running as Administrator"; adminWarn="Not Administrator - Mitigation restricted"; arpSection="ARP Resolution"; arpFlushed="Cache flushed for"; arpSkip="Skipping cache flush - requires elevation"; arpOk="ARP Resolved"; arpFail="ARP Failed"; routeSection="Routing Topology"; latSection="Latency Profile"; pings="pings"; firstPkt="First packet"; timeout="Timeout"; avgRest="Avg (rest)"; minMax="Min / Max"; spikeDelta="Spike delta"; spikeWarn="NIC likely power-saving"; latStable="Latency stable"; latFail="Insufficient replies"; tcpSection="TCP Port Probe"; portOpen="OPEN"; portClosed="CLOSED or Filtered"; httpSection="HTTP Reachability"; httpOk="HTTP responded"; httpFail="HTTP unreachable"; nicSection="Local NIC Power Management"; allowOff="Allow PC to turn off"; wakeMagic="Wake on Magic Packet"; wakePattern="Wake on Pattern Match"; summaryTitle="AUDIT SUMMARY"; allOk="All checks passed."; someWarn="check(s) require attention."; remTitle="REMEDIATION PLAYBOOK (RUN AS ADMIN)"; remNone="SYSTEM FULLY OPTIMIZED - ZERO ANOMALIES DETECTED"
     }
     fr = @{
-        title="AUDIT CONNECTIVITE & GESTION ENERGIE"; target="Cible"; port="Port"; step="ETAPE"; adminOk="Execution Administrateur"; adminWarn="Pas Administrateur - Mitigation restreinte"; arpSection="Resolution ARP"; arpFlushed="Cache vide pour"; arpSkip="Flush ignore - elevation requise"; arpOk="ARP Resolu"; arpFail="ARP Echoue"; routeSection="Topologie de Routage"; latSection="Profil de Latence"; pings="pings"; firstPkt="Premier paquet"; timeout="Expiration"; avgRest="Moy (reste)"; minMax="Min / Max"; spikeDelta="Delta pic"; spikeWarn="NIC en economie d'energie"; latStable="Latence stable"; latFail="Reponses insuffisantes"; tcpSection="Sonde Port TCP"; portOpen="OUVERT"; portClosed="FERME ou Filtre"; httpSection="Accessibilite HTTP"; httpOk="HTTP a repondu"; httpFail="HTTP inaccessible"; nicSection="Gestion Energie NIC Local"; allowOff="Autoriser extinction PC"; summaryTitle="RESUME DE L'AUDIT"; allOk="Tous les tests passes."; someWarn="test(s) necessitent attention."; remTitle="PLAYBOOK DE REMEDIATION (ADMIN REQUIS)"; remNone="SYSTEME OPTIMISE - ZERO ANOMALIE"
+        title="AUDIT CONNECTIVITE & GESTION ENERGIE"; target="Cible"; port="Port"; step="ETAPE"; adminOk="Execution Administrateur"; adminWarn="Pas Administrateur - Mitigation restreinte"; arpSection="Resolution ARP"; arpFlushed="Cache vide pour"; arpSkip="Flush ignore - elevation requise"; arpOk="ARP Resolu"; arpFail="ARP Echoue"; routeSection="Topologie de Routage"; latSection="Profil de Latence"; pings="pings"; firstPkt="Premier paquet"; timeout="Expiration"; avgRest="Moy (reste)"; minMax="Min / Max"; spikeDelta="Delta pic"; spikeWarn="NIC en economie d'energie"; latStable="Latence stable"; latFail="Reponses insuffisantes"; tcpSection="Sonde Port TCP"; portOpen="OUVERT"; portClosed="FERME ou Filtre"; httpSection="Accessibilite HTTP"; httpOk="HTTP a repondu"; httpFail="HTTP inaccessible"; nicSection="Gestion Energie NIC Local"; allowOff="Autoriser extinction PC"; wakeMagic="Reveil Magic Packet"; wakePattern="Reveil sur Motif"; summaryTitle="RESUME DE L'AUDIT"; allOk="Tous les tests passes."; someWarn="test(s) necessitent attention."; remTitle="PLAYBOOK DE REMEDIATION (ADMIN REQUIS)"; remNone="SYSTEME OPTIMISE - ZERO ANOMALIE"
     }
 }
 $C = @{ Title="White"; Head="Cyan"; OK="Green"; Warn="Yellow"; Err="Red"; Dim="DarkGray"; Accent="DarkCyan"; Reset="Gray" }
@@ -190,11 +190,31 @@ function Get-PingLatency {
     return $null
 }
 
+function Write-LatencyBar {
+    param([int]$ms, [int]$Max = 300, [int]$W = 28)
+    $fill  = [math]::Min([math]::Round(($ms / $Max) * $W), $W)
+    $empty = $W - $fill
+    $color = if ($ms -lt 20) { $C.OK } elseif ($ms -lt 80) { $C.Warn } else { $C.Err }
+    wh "          [" $C.Dim -nonl
+    wh ("#" * $fill) $color -nonl
+    wh ("." * $empty) $C.Dim -nonl
+    wh ("] {0,4}ms" -f $ms) $color
+}
+
 $lats = @(); $timeouts = 0
 for ($i=1; $i -le $PingCount; $i++) {
     $p = Test-Connection -ComputerName $ServerIP -Count 1 -ErrorAction SilentlyContinue
     $latency = Get-PingLatency $p
-    if ($null -ne $latency) { $lats += $latency; wh "     Ping [$i]: ${latency}ms" $C.Dim } else { $timeouts++; wh "     Ping [$i]: $($L.timeout)" $C.Err }
+    if ($null -ne $latency) {
+        $tag = if ($i -eq 1) { "  <- $($L.firstPkt)" } else { "" }
+        wh ("     Ping [{0}/{1}]{2}" -f $i, $PingCount, $tag) $C.Dim
+        Write-LatencyBar -ms $latency
+        $lats += $latency
+    } else {
+        $timeouts++
+        wh ("     Ping [{0}/{1}] " -f $i, $PingCount) $C.Dim -nonl
+        wh $L.timeout $C.Err
+    }
 }
 
 if ($lats.Count -ge 1) {
@@ -222,7 +242,7 @@ Write-Section $L.httpSection 4
 try { $req = [System.Net.HttpWebRequest]::Create("http://${ServerIP}:${TargetPort}"); $req.Timeout = 2000; Write-StatusLine $L.httpOk "HTTP $([int]$req.GetResponse().StatusCode)" "ok"; $report["HTTP"] = "OK" }
 catch { Write-StatusLine $L.httpFail "" "err"; $report["HTTP"] = "FAILED" }
 
-# [4] POWER MANAGEMENT
+# [5] POWER MANAGEMENT
 Write-Section $L.nicSection 5
 if (-not (Get-Command Get-NetAdapter -ErrorAction SilentlyContinue)) {
     Write-StatusLine "Not supported" "Get-NetAdapter cmdlets unavailable on this OS" "warn"
@@ -232,11 +252,34 @@ if (-not (Get-Command Get-NetAdapter -ErrorAction SilentlyContinue)) {
     else {
         foreach ($nic in $nics) {
             $pm = $nic | Get-NetAdapterPowerManagement -ErrorAction SilentlyContinue
-            if ($pm -and $pm.AllowComputerToTurnOffDevice -match "True|Enabled") {
-                Write-StatusLine $nic.Name "PowerSave ENABLED" "warn"
+            if (-not $pm) { continue }
+
+            wh ""
+            wh "     +-- Adapter: " $C.Accent -nonl
+            wh $nic.InterfaceDescription $C.Title
+            wh "     |" $C.Accent
+
+            $fields = [ordered]@{
+                "$($L.allowOff)  " = $pm.AllowComputerToTurnOffDevice
+                "$($L.wakeMagic)  " = $pm.WakeOnMagicPacket
+                "$($L.wakePattern) " = $pm.WakeOnPattern
+            }
+            foreach ($kv in $fields.GetEnumerator()) {
+                $st    = if ($kv.Value -match "Enabled|True") { "warn" } else { "ok" }
+                $icon  = if ($st -eq "warn") { "[!!]" } else { "[OK]" }
+                $color = if ($st -eq "warn") { $C.Warn } else { $C.OK }
+                wh "     |  $icon " $color -nonl
+                wh "$($kv.Key): " $C.Reset -nonl
+                wh $kv.Value $color
+            }
+            wh "     +$("-" * 46)" $C.Accent
+
+            if ($pm.AllowComputerToTurnOffDevice -match "True|Enabled") {
                 $report["NIC: $($nic.Name)"] = "PowerSave"
                 $remediation += "Disable-NetAdapterPowerManagement -Name '$($nic.Name)' -ErrorAction SilentlyContinue"
-            } else { Write-StatusLine $nic.Name "Optimized" "ok"; $report["NIC: $($nic.Name)"] = "Optimized" }
+            } else {
+                $report["NIC: $($nic.Name)"] = "Optimized"
+            }
         }
     }
 }

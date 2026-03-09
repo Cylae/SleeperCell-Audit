@@ -1,59 +1,75 @@
-# nic-ps-audit
+<h1 align="center">🕵️‍♂️ Sleeper Server Audit</h1>
 
-**FR :** Diagnostic de précision pour détecter les "serveurs dormants". Identifie si une latence ou un échec de connexion est dû à une gestion d'énergie agressive (802.11 Power Save). Fournit désormais un playbook d'auto-remédiation et des utilitaires pour Linux & Windows.
-**EN :** Precision diagnostic for "Sleeper Servers". Identifies if connection timeouts are caused by aggressive power management (802.11 Power Save). Now provides an auto-remediation playbook and utilities for both Linux & Windows.
+<p align="center">
+  <b>Precision diagnostics & auto-remediation for aggressive power management</b><br>
+  <i>Diagnostic de précision & auto-remédiation pour gestion d'énergie agressive</i>
+</p>
 
----
-
-## Technical Context
-Le **First Packet Penalty** survient lorsque l'interface réseau du serveur entre en état **Doze** (Veille). Elle ignore les requêtes **ARP** (Address Resolution Protocol) envoyées par le client tant qu'elle n'est pas réveillée par un événement interne ou un paquet sortant. Ce script automatise le cycle `Flush -> Probe -> Measure` pour isoler ce comportement et propose les commandes exactes pour corriger les anomalies (Auto-Remediation Playbook).
-
-## Features
-* **Bilingual UI :** Menus and outputs in both English and French (configurable via `--lang` or the interactive menu).
-* **Persistent Config :** Use `--configure` to set and save your target IP, Port, and Ping count so you don't have to type them every time.
-* **Auto-Remediation Playbook :** If an anomaly is detected (e.g., Latency Spike, Port Closed, ARP failure, OS Sleep Targets enabled), the scripts will generate a list of copy-pasteable commands to fix the issues permanently.
-* **ARP Flush & Probe :** Force une résolution de couche 2 pour tester la réactivité réelle du matériel.
-* **Latency Profiling :** Calcule le delta entre le premier paquet (Cold Start) et les suivants (Steady State).
-* **NIC Power Audit :** Vérifie si le système d'exploitation autorise l'extinction de sa propre carte (ethtool sur Linux, Get-NetAdapter sur Windows).
-
-## Scripts
-
-### 1. Linux / Debian (`audit_linux.sh`)
-Built for Linux servers. Requires `bash` and standard networking utilities (`ip`, `ping`).
-* Optional dependencies for full diagnostics: `ethtool`, `curl`.
-
-### 2. Windows (`audit_windows.ps1`)
-Built for Windows environments. Cross-platform compatible with both Windows PowerShell 5.1 and PowerShell 7.
+<p align="center">
+  <img alt="OS Support: Linux" src="https://img.shields.io/badge/Linux-Bash-FCC624?style=flat-square&logo=linux&logoColor=black" />
+  <img alt="OS Support: Windows" src="https://img.shields.io/badge/Windows-PowerShell-0078D4?style=flat-square&logo=windows&logoColor=white" />
+  <img alt="Languages: EN / FR" src="https://img.shields.io/badge/i18n-EN%20%7C%20FR-4CAF50?style=flat-square&logo=translate" />
+</p>
 
 ---
 
-## Usage
-Run the scripts via your terminal of choice. Running as Administrator / root is highly recommended to allow the script to flush the ARP cache and inspect low-level NIC power management settings.
+## 📖 The Problem: First Packet Penalty
+Is your server experiencing intermittent timeouts, randomly closing ports, or dropping the very first ping request?
 
-### Basic Run
+This is often caused by the **First Packet Penalty**. When a server's network interface card (NIC) enters a deep sleep or power-saving state (like 802.11 Power Save or D3/Modern Standby), it drops incoming **ARP** requests until awoken by internal events or outbound traffic.
+
+These scripts automate a full `Flush -> Probe -> Measure` lifecycle to diagnose exactly where the failure occurs and generate an **Auto-Remediation Playbook** to fix it.
+
+---
+
+## ✨ Features
+
+- 🌐 **Bilingual UI**: Full support for both English and French outputs (`--lang fr`).
+- 💾 **Persistent Config**: Save your target IP and ports via an interactive menu (`--configure`) to a local JSON file so you don't have to retype them.
+- 🛠️ **Auto-Remediation**: Generates a safe, copy-pasteable playbook of commands specific to your anomalies (e.g., disabling NIC power-save, adding firewall rules, fixing routing).
+- 📈 **Visual Profiling**: Beautiful CLI progress bars mapping latency spikes on the very first "cold start" packet.
+- 🌍 **Cross-Platform**: Two perfectly synchronized scripts. Native `Bash` for Linux, native `.NET/PowerShell` for Windows.
+
+---
+
+## 🚀 Usage
+
+Execute the scripts via your terminal of choice. Running as **Administrator / root** is highly recommended to allow the script to flush the ARP cache and inspect low-level NIC power management settings.
+
+### 🐧 Linux (`audit_linux.sh`)
 ```bash
-# Linux
+# Basic run (will use defaults or audit_config.json if it exists)
 sudo ./audit_linux.sh
 
-# Windows
-.\audit_windows.ps1
-```
-
-### Interactive Configuration
-Save defaults to a persistent `audit_config.json` file.
-```bash
-# Linux
+# Interactive setup to save configuration
 ./audit_linux.sh --configure
 
-# Windows
+# CLI overrides for a quick one-off check
+sudo ./audit_linux.sh --server-ip 192.168.1.100 --port 51821 --lang fr
+```
+
+### 🪟 Windows (`audit_windows.ps1`)
+*Supports Windows PowerShell 5.1 & PowerShell Core 7+*
+```powershell
+# Basic run
+.\audit_windows.ps1
+
+# Interactive setup to save configuration
 .\audit_windows.ps1 -Configure
+
+# CLI overrides for a quick one-off check
+.\audit_windows.ps1 -ServerIP 192.168.1.100 -TargetPort 51821 -Lang fr
 ```
 
-### CLI Overrides
-```bash
-# Linux
-sudo ./audit_linux.sh --server-ip 192.168.1.100 --port 80 --ping-count 10 --lang fr
+---
 
-# Windows
-.\audit_windows.ps1 -ServerIP 192.168.1.100 -TargetPort 80 -PingCount 10 -Lang fr
-```
+## 📦 Dependencies
+**Linux:**
+* Built-in: `bash`, `ping`, `ip`, `awk`
+* Optional (for deeper diagnostics): `ethtool`, `curl`
+
+**Windows:**
+* Built-in: `PowerShell`
+
+---
+<p align="center"><i>Diagnose smarter, stay connected longer. ⚡</i></p>
