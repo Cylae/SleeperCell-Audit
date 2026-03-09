@@ -18,7 +18,7 @@ Is your server experiencing intermittent timeouts, randomly closing ports, or dr
 
 This is often caused by the **First Packet Penalty**. When a server's network interface card (NIC) enters a deep sleep or power-saving state (like 802.11 Power Save or D3/Modern Standby), it drops incoming **ARP** requests until awoken by internal events or outbound traffic.
 
-These scripts automate a full `Flush -> Probe -> Measure` lifecycle to diagnose exactly where the failure occurs and generate an **Auto-Remediation Playbook** to fix it.
+These scripts automate a full `Flush -> Probe -> Measure` lifecycle to diagnose exactly where the failure occurs and generate an **Auto-Remediation Playbook** to fix it. We have subjected these scripts to a gigantic battery of extreme tests ensuring their reliability in real world scenarios.
 
 ---
 

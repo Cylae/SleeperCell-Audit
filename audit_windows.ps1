@@ -5,9 +5,15 @@
 # ==============================================================================
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$false)] [string]$ServerIP,
-    [Parameter(Mandatory=$false)] [int]$TargetPort,
-    [Parameter(Mandatory=$false)] [int]$PingCount,
+    [Parameter(Mandatory=$false)]
+    [ValidateScript({($_ -as [System.Net.IPAddress]) -ne $null -or [string]::IsNullOrWhiteSpace($_)})]
+    [string]$ServerIP,
+    [Parameter(Mandatory=$false)]
+    [ValidateRange(1, 65535)]
+    [int]$TargetPort,
+    [Parameter(Mandatory=$false)]
+    [ValidateRange(1, 20)]
+    [int]$PingCount,
     [Parameter(Mandatory=$false)] [switch]$Configure,
     [Parameter(Mandatory=$false)] [switch]$ResetConfig,
     [Parameter(Mandatory=$false)] [switch]$Help,
