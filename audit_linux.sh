@@ -663,14 +663,31 @@ else
     fi
 fi
 
+# ================================================================
+#  [7] OS POWER TARGETS & CPU GOVERNOR
+# ================================================================
+write_section "$(get_s osSleep)" 8
+
 SLP=$(systemctl status sleep.target suspend.target 2>/dev/null | grep -c "loaded" || true)
 if (( SLP > 0 )); then
-    write_status_line "$(get_s osSleep)" "Active" "warn"
-    report_set "OS Power" "Not Optimal"
+    write_status_line "Systemd Sleep Targets" "Active" "warn"
+    report_set "OS Sleep" "Active"
     REMEDIATION+=("systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target")
 else
-    write_status_line "$(get_s osSleep)" "Masked" "ok"
-    report_set "OS Power" "High Perf"
+    write_status_line "Systemd Sleep Targets" "Masked" "ok"
+    report_set "OS Sleep" "Disabled"
+fi
+
+if [[ -f "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ]]; then
+    gov=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo "unknown")
+    if [[ "$gov" == "performance" ]]; then
+        write_status_line "CPU Governor" "Performance" "ok"
+        report_set "OS Power" "High Perf"
+    else
+        write_status_line "CPU Governor" "$gov" "warn"
+        report_set "OS Power" "Not Optimal"
+        REMEDIATION+=("echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor")
+    fi
 fi
 
 # ================================================================

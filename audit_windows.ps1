@@ -161,6 +161,19 @@ if ($isWinEnv) {
 
 if ($isAdmin) { wh "  [OK] $($L.adminOk)" $C.OK } else { wh "  [!!] $($L.adminWarn)" $C.Warn }
 
+# ================================================================
+#  [0] DEPENDENCY CHECK
+# ================================================================
+Write-Section "Dependency Check" 0
+
+foreach ($cmd in @("ping", "arp", "tracert", "powercfg")) {
+    if (Get-Command $cmd -ErrorAction SilentlyContinue) {
+        Write-StatusLine $cmd "Available" "ok"
+    } else {
+        Write-StatusLine $cmd "Missing (optional)" "warn"
+    }
+}
+
 # [1] ARP & ROUTING
 Write-Section $L.arpSection 1
 
@@ -393,12 +406,14 @@ if ($remediation.Count -gt 0) {
 
 if ($ExportJson) {
     $outDir = if ($LogDir) { $LogDir } else { $ScriptRoot }
+    if (-not (Test-Path $outDir)) { try { New-Item -ItemType Directory -Path $outDir | Out-Null } catch {} }
+
     $jsonPath = Join-Path $outDir ("audit_{0}_{1}.json" -f $ServerIP, (Get-Date -Format "yyyyMMdd_HHmmss"))
     try {
         $report | ConvertTo-Json | Set-Content $jsonPath -Encoding UTF8
         wh "  [OK] $($L.jsonExported) $jsonPath" $C.Dim
     } catch {
-        wh "  [XX] Failed to export JSON." $C.Warn
+        wh "  [XX] Failed to export JSON: $_" $C.Warn
     }
 }
 
