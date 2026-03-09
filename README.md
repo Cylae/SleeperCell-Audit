@@ -28,6 +28,7 @@ These scripts automate a full `Flush -> Probe -> Measure` lifecycle to diagnose 
 - 💾 **Persistent Config**: Save your target IP and ports via an interactive menu (`--configure`) to a local JSON file so you don't have to retype them.
 - 🛠️ **Interactive Auto-Remediation**: Generates a safe playbook of commands specific to your anomalies. If run as Administrator/root, the scripts will prompt you `[y/N]` to safely apply the fixes automatically (safely bypassed in non-interactive/cron environments).
 - 📈 **Deep Network Profiling**: Beautiful CLI progress bars mapping latency spikes, **Packet Loss %**, and **Jitter** on the very first "cold start" packet. Also conducts Layer 3 **DNS Resolution** checks and **Traceroutes**.
+- ⚡ **OS Power Telemetry**: Inspects the deepest layers of your OS power management, reading `cpufreq` governors, systemd sleep targets, and `powercfg` active schemes.
 - 📤 **Machine-Readable Exports**: Use the `--export-json` / `-ExportJson` flag to dump the final audit summary to a JSON file for monitoring integrations. Log and JSON exports are automatically tagged with the target IP (e.g. `audit_192.168.1.254_20260309.log`).
 - 🌍 **Cross-Platform**: Two perfectly synchronized scripts. Native `Bash` for Linux, native `.NET/PowerShell` for Windows.
 
@@ -62,15 +63,24 @@ sudo ./audit_linux.sh --server-ip 192.168.1.100 --port 51821 --lang fr --export-
 .\audit_windows.ps1 -ServerIP 192.168.1.100 -TargetPort 51821 -Lang fr -ExportJson
 ```
 
+### 🤖 Hand-Free / Automation (Cron & Task Scheduler)
+If the scripts detect that they are running without an active terminal (e.g., via a CRON job or Windows Task Scheduler), they will automatically skip the `[y/N]` interactive remediation prompt to ensure the job completes gracefully. Use the JSON export flags to funnel the results into your monitoring systems.
+
 ---
 
 ## 📦 Dependencies
-**Linux:**
-* Built-in: `bash`, `ping`, `ip`, `awk`
-* Optional (for deeper diagnostics): `ethtool`, `curl`
+Upon execution, both scripts will perform a live **Dependency Check** to let you know what features are available.
 
-**Windows:**
-* Built-in: `PowerShell`
+**Linux (`audit_linux.sh`)**
+* **Core**: `bash`, `ping`, `ip`, `awk`
+* **Optional**:
+  * `ethtool` (Required to detect NIC Wake-on-LAN and Power Save states)
+  * `curl` (Required for HTTP reachability tests)
+  * `traceroute` (Required for Layer 3 route pathing)
+
+**Windows (`audit_windows.ps1`)**
+* **Core**: Windows PowerShell 5.1+ or PowerShell Core 7+
+* **Optional**: `tracert`, `powercfg`
 
 ---
 <p align="center"><i>Diagnose smarter, stay connected longer. ⚡</i></p>
