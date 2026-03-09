@@ -183,19 +183,35 @@ foreach ($cmd in @("ping", "arp", "tracert", "powercfg")) {
 # [1] ARP & ROUTING
 Write-Section $L.arpSection 1
 
+$isOnLink = $false
 try {
-    $route = Get-NetRoute -DestinationPrefix "$ServerIP/32" -ErrorAction SilentlyContinue
-    if (-not $route) { $route = Get-NetRoute -DestinationPrefix "0.0.0.0/0" | Sort-Object RouteMetric | Select-Object -First 1 }
+    $route = Find-NetRoute -RemoteIPAddress $ServerIP -ErrorAction Stop | Select-Object -First 1
+    $isOnLink = ($route.NextHop -eq '0.0.0.0' -or $route.NextHop -eq '::')
     $iface = Get-NetAdapter -InterfaceIndex $route.InterfaceIndex -ErrorAction SilentlyContinue
-    Write-StatusLine "Interface" "$($iface.Name) (Metric: $($route.RouteMetric))" "ok"
+    Write-StatusLine "Interface" "$($iface.Name) (NextHop: $($route.NextHop))" "ok"
     $report["Routing"] = "IF: $($iface.Name)"
-} catch { Write-StatusLine "Route" "Not Found" "err"; $report["Routing"] = "FAILED" }
+} catch {
+    $fallbackRoute = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
+    if ($fallbackRoute) {
+        $iface = Get-NetAdapter -InterfaceIndex $fallbackRoute.InterfaceIndex -ErrorAction SilentlyContinue
+        Write-StatusLine "Interface" "$($iface.Name) (Fallback GW: $($fallbackRoute.NextHop))" "warn"
+        $report["Routing"] = "IF: $($iface.Name)"
+    } else {
+        Write-StatusLine "Route" "Not Found" "err"
+        $report["Routing"] = "FAILED"
+    }
+}
 
-if ($isAdmin) { try { arp -d $ServerIP 2>$null } catch {}; wh "       $($L.arpFlushed) $ServerIP" $C.Dim } else { wh "       $($L.arpSkip)" $C.Dim }
-$null = Test-Connection -ComputerName $ServerIP -Count 1 -Quiet -ErrorAction SilentlyContinue
-try { $arpEntry = arp -a | Select-String "\b$([regex]::Escape($ServerIP))\b" } catch { $arpEntry = $null }
-if ($arpEntry) { Write-StatusLine $L.arpOk $arpEntry.ToString().Trim() "ok"; $report["ARP"] = "Resolved" }
-else { Write-StatusLine $L.arpFail "" "err"; $report["ARP"] = "FAILED"; $remediation += "Remove-NetNeighbor -IPAddress $ServerIP -Confirm:`$false -ErrorAction SilentlyContinue" }
+if ($isAdmin -and $isOnLink) { try { arp -d $ServerIP 2>$null } catch {}; wh "       $($L.arpFlushed) $ServerIP" $C.Dim } elseif ($isOnLink) { wh "       $($L.arpSkip)" $C.Dim }
+if ($isOnLink) {
+    $null = Test-Connection -ComputerName $ServerIP -Count 1 -Quiet -ErrorAction SilentlyContinue
+    try { $arpEntry = arp -a | Select-String "\b$([regex]::Escape($ServerIP))\b" } catch { $arpEntry = $null }
+    if ($arpEntry) { Write-StatusLine $L.arpOk $arpEntry.ToString().Trim() "ok"; $report["ARP"] = "Resolved" }
+    else { Write-StatusLine $L.arpFail "" "err"; $report["ARP"] = "FAILED"; $remediation += "Remove-NetNeighbor -IPAddress $ServerIP -Confirm:`$false -ErrorAction SilentlyContinue" }
+} else {
+    Write-StatusLine "ARP Skipped" "Target is remote (Off-Link)" "ok"
+    $report["ARP"] = "Remote/Skipped"
+}
 
 # [2] LATENCY
 Write-Section "$($L.latSection) ($PingCount $($L.pings))" 2
@@ -271,7 +287,7 @@ if ($lats.Count -ge 1) {
     wh ("     |  $($L.lossAndJitter.PadRight(16)): {0,5}% / {1,4}ms    |" -f $lossPct, $jitter) $C.Reset
     wh "     +------------------------------------+" $C.Accent
 
-    if ($spike -gt 50) { Write-StatusLine "Spike" "+${spike}ms" "warn"; $report["Latency"] = "Spike: ${spike}ms"; $remediation += "Disable-NetAdapterPowerManagement -Name '*' -ErrorAction SilentlyContinue" }
+    if ($spike -gt 50) { Write-StatusLine "Spike" "+${spike}ms" "warn"; $report["Latency"] = "Spike: ${spike}ms"; $remediation += "`$A=Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object Status -eq 'Up'; `$K=Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4D36E972-E325-11CE-BFC1-08002BE10318}' -ErrorAction SilentlyContinue | Where-Object { `$_.PSChildName -match '^\d{4}$' -and `$A.InterfaceGuid -contains (Get-ItemProperty `$_.PSPath -Name 'NetCfgInstanceId' -EA SilentlyContinue).NetCfgInstanceId }; if (`$K) { `$K | ForEach-Object { Set-ItemProperty `$_.PSPath -Name 'PnPCapabilities' -Value 24 -Type DWord -EA SilentlyContinue }; `$A | Restart-NetAdapter -EA SilentlyContinue; `$R=15; while((Get-NetAdapter -Name `$A.Name -EA SilentlyContinue).Status -ne 'Up' -and `$R -gt 0){Start-Sleep 1; `$R--}; if((Get-NetAdapter -Name `$A.Name -EA SilentlyContinue).Status -eq 'Up'){Start-Sleep 3} }"; $remediation += "Disable-NetAdapterPowerManagement -Name '*' -ErrorAction SilentlyContinue" }
     else { Write-StatusLine $L.latStable "" "ok"; $report["Latency"] = "Stable" }
 
     if ($lossPct -gt 0) { $report["Packet Loss"] = "${lossPct}%" }
@@ -293,8 +309,32 @@ try {
 }
 
 Write-Section $L.httpSection 4
-try { $req = [System.Net.HttpWebRequest]::Create("http://${ServerIP}:${TargetPort}"); $req.Timeout = 2000; Write-StatusLine $L.httpOk "HTTP $([int]$req.GetResponse().StatusCode)" "ok"; $report["HTTP"] = "OK" }
-catch { Write-StatusLine $L.httpFail "" "err"; $report["HTTP"] = "FAILED" }
+try {
+    $req = [System.Net.HttpWebRequest]::Create("http://${ServerIP}:${TargetPort}")
+    $req.Timeout = 2000
+    $req.AllowAutoRedirect = $false
+    Write-StatusLine $L.httpOk "HTTP $([int]$req.GetResponse().StatusCode)" "ok"
+    $report["HTTP"] = "OK"
+}
+catch [System.Net.WebException] {
+    if ($_.Exception.Response) {
+        $StatusCode = [int]$_.Exception.Response.StatusCode
+        if ($StatusCode -match "^30") {
+            $Location = $_.Exception.Response.Headers.Location
+            Write-StatusLine $L.httpOk "HTTP $StatusCode -> $Location" "ok"
+        } else {
+            Write-StatusLine $L.httpOk "HTTP $StatusCode" "ok"
+        }
+        $report["HTTP"] = "OK"
+    } else {
+        Write-StatusLine $L.httpFail "" "err"
+        $report["HTTP"] = "FAILED"
+    }
+}
+catch {
+    Write-StatusLine $L.httpFail "" "err"
+    $report["HTTP"] = "FAILED"
+}
 
 # [5] TRACEROUTE  (first 5 hops)
 Write-Section $L.traceSection 5
@@ -367,6 +407,7 @@ if (-not (Get-Command Get-NetAdapter -ErrorAction SilentlyContinue)) {
 
             if ($pm.AllowComputerToTurnOffDevice -match "True|Enabled") {
                 $report["NIC: $($nic.Name)"] = "PowerSave"
+                $remediation += "`$A=Get-NetAdapter -Name '$($nic.Name)' -ErrorAction SilentlyContinue; `$K=Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4D36E972-E325-11CE-BFC1-08002BE10318}' -ErrorAction SilentlyContinue | Where-Object { `$_.PSChildName -match '^\d{4}$' -and `$A.InterfaceGuid -contains (Get-ItemProperty `$_.PSPath -Name 'NetCfgInstanceId' -EA SilentlyContinue).NetCfgInstanceId }; if (`$K) { `$K | ForEach-Object { Set-ItemProperty `$_.PSPath -Name 'PnPCapabilities' -Value 24 -Type DWord -EA SilentlyContinue }; `$A | Restart-NetAdapter -EA SilentlyContinue; `$R=15; while((Get-NetAdapter -Name `$A.Name -EA SilentlyContinue).Status -ne 'Up' -and `$R -gt 0){Start-Sleep 1; `$R--}; if((Get-NetAdapter -Name `$A.Name -EA SilentlyContinue).Status -eq 'Up'){Start-Sleep 3} }"
                 $remediation += "Disable-NetAdapterPowerManagement -Name '$($nic.Name)' -ErrorAction SilentlyContinue"
             } else {
                 $report["NIC: $($nic.Name)"] = "Optimized"

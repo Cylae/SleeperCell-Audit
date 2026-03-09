@@ -471,31 +471,49 @@ else wh "  [!!] $(get_s adminWarn)" "$CWARN"; IS_ROOT=0; fi
 write_section "$(get_s arpSection)" 1
 
 IFACE=$(ip route get "$SERVER_IP" 2>/dev/null | grep -Po '(?<=dev )(\S+)' || true)
+IS_ON_LINK=1
+if ip route get "$SERVER_IP" 2>/dev/null | grep -q 'via'; then
+    IS_ON_LINK=0
+fi
+
 if [[ -n "$IFACE" ]]; then
-    write_status_line "$(get_s routeOk)" "Interface: $IFACE" "ok"
+    if [[ $IS_ON_LINK -eq 1 ]]; then
+        write_status_line "$(get_s routeOk)" "Interface: $IFACE (On-Link)" "ok"
+    else
+        GATEWAY=$(ip route get "$SERVER_IP" 2>/dev/null | grep -Po '(?<=via )(\S+)' || true)
+        write_status_line "$(get_s routeOk)" "Interface: $IFACE (Gateway: $GATEWAY)" "ok"
+    fi
     report_set "Routing" "IF: $IFACE"
 else
     write_status_line "$(get_s routeFail)" "" "err"
     report_set "Routing" "FAILED"
 fi
 
-if [[ $IS_ROOT -eq 1 ]]; then
-    ip neigh flush to "$SERVER_IP" 2>/dev/null || true
-    wh "       $(get_s arpFlushed) $SERVER_IP" "$DIM"
-else
-    wh "       $(get_s arpSkip)" "$DIM"
-fi
+if [[ $IS_ON_LINK -eq 1 ]]; then
+    if [[ $IS_ROOT -eq 1 ]]; then
+        ip neigh flush to "$SERVER_IP" 2>/dev/null || true
+        wh "       $(get_s arpFlushed) $SERVER_IP" "$DIM"
+    else
+        wh "       $(get_s arpSkip)" "$DIM"
+    fi
 
-ping -c 1 -W 1 "$SERVER_IP" &>/dev/null || true
-ARP_MAC=$(ip neigh show "$SERVER_IP" | awk '{print $5}' || true)
+    ping -c 1 -W 1 "$SERVER_IP" &>/dev/null || true
+    ARP_MAC=$(ip neigh show "$SERVER_IP" | awk '{print $5}' || true)
 
-if [[ -n "$ARP_MAC" && "$ARP_MAC" != "" ]]; then
-    write_status_line "$(get_s arpOk)" "$ARP_MAC" "ok"
-    report_set "ARP" "Resolved"
+    if [[ -n "$ARP_MAC" && "$ARP_MAC" != "" ]]; then
+        write_status_line "$(get_s arpOk)" "$ARP_MAC" "ok"
+        report_set "ARP" "Resolved"
+    else
+        write_status_line "$(get_s arpFail)" "$(get_s arpSleep)" "err"
+        report_set "ARP" "FAILED"
+        if [[ -n "$IFACE" ]]; then
+            REMEDIATION+=("ip link set $IFACE arp on")
+            REMEDIATION+=("ip neigh flush to $SERVER_IP")
+        fi
+    fi
 else
-    write_status_line "$(get_s arpFail)" "$(get_s arpSleep)" "err"
-    report_set "ARP" "FAILED"
-    [[ -n "$IFACE" ]] && REMEDIATION+=("ip link set $IFACE arp on")
+    write_status_line "ARP Skipped" "Target is remote (Off-Link)" "ok"
+    report_set "ARP" "Remote/Skipped"
 fi
 
 # ================================================================
@@ -601,8 +619,14 @@ fi
 
 write_section "$(get_s httpSection)" 4
 if command -v curl &>/dev/null; then
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 "http://${SERVER_IP}:${TARGET_PORT}" 2>/dev/null || echo "000")
-    if [[ "$http_code" != "000" && "$http_code" != "" ]]; then
+    http_resp=$(curl -s -I -w "%{http_code}" --max-time 2 "http://${SERVER_IP}:${TARGET_PORT}" 2>/dev/null || echo "000")
+    http_code=$(echo "$http_resp" | tail -n1)
+
+    if [[ "$http_code" =~ ^30[0-9]$ ]]; then
+        location=$(echo "$http_resp" | grep -i '^Location:' | awk '{print $2}' | tr -d '\r\n')
+        write_status_line "$(get_s httpOk)" "HTTP $http_code -> $location" "ok"
+        report_set "HTTP" "OK ($http_code)"
+    elif [[ "$http_code" != "000" && "$http_code" != "" && "$http_code" =~ ^[2-5][0-9]{2}$ ]]; then
         write_status_line "$(get_s httpOk)" "HTTP $http_code" "ok"
         report_set "HTTP" "OK ($http_code)"
     else
