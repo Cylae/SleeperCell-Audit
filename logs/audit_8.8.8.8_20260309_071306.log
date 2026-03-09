@@ -1,0 +1,113 @@
+
+  +==============================================================+
+  |                                                              |
+  |  CONNECTIVITY & POWER MANAGEMENT AUDIT                       |
+  |  Target: 8.8.8.8   Port: 51821                               |
+  |                                                              |
+  +==============================================================+
+
+  [!!] Not Administrator - Mitigation restricted
+
+  +--[ STEP 0 ]------------------------------
+  |  >> Dependency Check
+  +--------------------------------------------------
+     [OK]
+ping
+ ->
+Available
+     [OK]
+arp
+ ->
+Available
+     [!!]
+tracert
+ ->
+Missing (optional)
+     [!!]
+powercfg
+ ->
+Missing (optional)
+
+  +--[ STEP 1 ]------------------------------
+  |  >> ARP Resolution
+  +--------------------------------------------------
+     [OK]
+ARP Skipped
+ ->
+Target is remote (Off-Link)
+
+  +--[ STEP 2 ]------------------------------
+  |  >> Latency Profile (1 pings)
+  +--------------------------------------------------
+     Ping [1/1]  <- First packet
+          [
+
+............................
+]    2ms
+     +------------------------------------+
+     |  First packet    :      2ms           |
+     |  Avg (rest)      :      2ms           |
+     |  Min / Max       :    2ms /    2ms    |
+     |  Spike delta     :      0ms           |
+     |  Loss / Jitter   :     0% /    0ms    |
+     +------------------------------------+
+     [OK]
+Latency stable
+
+
+  +--[ STEP 3 ]------------------------------
+  |  >> TCP Port Probe
+  +--------------------------------------------------
+     [XX]
+Port 51821
+ ->
+CLOSED or Filtered
+
+  +--[ STEP 4 ]------------------------------
+  |  >> HTTP Reachability
+  +--------------------------------------------------
+     [XX]
+HTTP unreachable
+
+
+  +--[ STEP 5 ]------------------------------
+  |  >> Traceroute (first 5 hops)
+  +--------------------------------------------------
+     [!!]
+
+ ->
+tracert not available
+
+  +--[ STEP 6 ]------------------------------
+  |  >> DNS Resolution Check
+  +--------------------------------------------------
+     [OK]
+DNS resolved
+ ->
+dns.google
+
+  +--[ STEP 7 ]------------------------------
+  |  >> Local NIC Power Management
+  +--------------------------------------------------
+     [!!]
+Not supported
+ ->
+Get-NetAdapter cmdlets unavailable on this OS
+
+  +==========================================================+
+  |  AUDIT SUMMARY                                           |
+  +==========================================================+
+  |  [!!]  ARP                  Remote/Skipped               |
+  |  [OK]  Latency              Stable                       |
+  |  [XX]  TCP                  Closed/Filtered              |
+  |  [XX]  HTTP                 FAILED                       |
+  |  [OK]  DNS                  Resolved                     |
+  |  [OK]  OS Power             High Perf                    |
+  +==========================================================+
+
+  +==========================================================+
+  |  REMEDIATION PLAYBOOK (RUN AS ADMIN)                     |
+  +==========================================================+
+  > New-NetFirewallRule -DisplayName 'WireGuard UI' -Direction Outbound -LocalPort 51821 -Protocol TCP -Action Allow
+  +----------------------------------------------------------+
+  [OK] JSON Export saved to /app/logs/audit_8.8.8.8_20260309_071311.json
