@@ -12,6 +12,7 @@ param(
     [Parameter(Mandatory=$false)] [switch]$ResetConfig,
     [Parameter(Mandatory=$false)] [switch]$Help,
     [Parameter(Mandatory=$false)] [switch]$NoLog,
+    [Parameter(Mandatory=$false)] [switch]$ExportJson,
     [Parameter(Mandatory=$false)] [ValidateSet("fr","en")] [string]$Lang
 )
 
@@ -48,10 +49,10 @@ function Save-Config ($cfg) { try { $cfg | ConvertTo-Json | Set-Content $ConfigP
 
 $S = @{
     en = @{
-        title="CONNECTIVITY & POWER MANAGEMENT AUDIT"; target="Target"; port="Port"; step="STEP"; adminOk="Running as Administrator"; adminWarn="Not Administrator - Mitigation restricted"; arpSection="ARP Resolution"; arpFlushed="Cache flushed for"; arpSkip="Skipping cache flush - requires elevation"; arpOk="ARP Resolved"; arpFail="ARP Failed"; routeSection="Routing Topology"; latSection="Latency Profile"; pings="pings"; firstPkt="First packet"; timeout="Timeout"; avgRest="Avg (rest)"; minMax="Min / Max"; spikeDelta="Spike delta"; spikeWarn="NIC likely power-saving"; latStable="Latency stable"; latFail="Insufficient replies"; tcpSection="TCP Port Probe"; portOpen="OPEN"; portClosed="CLOSED or Filtered"; httpSection="HTTP Reachability"; httpOk="HTTP responded"; httpFail="HTTP unreachable"; nicSection="Local NIC Power Management"; allowOff="Allow PC to turn off"; wakeMagic="Wake on Magic Packet"; wakePattern="Wake on Pattern Match"; summaryTitle="AUDIT SUMMARY"; allOk="All checks passed."; someWarn="check(s) require attention."; remTitle="REMEDIATION PLAYBOOK (RUN AS ADMIN)"; remNone="SYSTEM FULLY OPTIMIZED - ZERO ANOMALIES DETECTED"
+        title="CONNECTIVITY & POWER MANAGEMENT AUDIT"; target="Target"; port="Port"; step="STEP"; adminOk="Running as Administrator"; adminWarn="Not Administrator - Mitigation restricted"; arpSection="ARP Resolution"; arpFlushed="Cache flushed for"; arpSkip="Skipping cache flush - requires elevation"; arpOk="ARP Resolved"; arpFail="ARP Failed"; routeSection="Routing Topology"; latSection="Latency Profile"; pings="pings"; firstPkt="First packet"; timeout="Timeout"; avgRest="Avg (rest)"; minMax="Min / Max"; spikeDelta="Spike delta"; spikeWarn="NIC likely power-saving"; latStable="Latency stable"; latFail="Insufficient replies"; tcpSection="TCP Port Probe"; portOpen="OPEN"; portClosed="CLOSED or Filtered"; httpSection="HTTP Reachability"; httpOk="HTTP responded"; httpFail="HTTP unreachable"; nicSection="Local NIC Power Management"; allowOff="Allow PC to turn off"; wakeMagic="Wake on Magic Packet"; wakePattern="Wake on Pattern Match"; summaryTitle="AUDIT SUMMARY"; allOk="All checks passed."; someWarn="check(s) require attention."; remTitle="REMEDIATION PLAYBOOK (RUN AS ADMIN)"; remNone="SYSTEM FULLY OPTIMIZED - ZERO ANOMALIES DETECTED"; runRemediation="Would you like to automatically apply these fixes now? [y/N]"; remApplied="Fixes applied successfully."; jsonExported="JSON Export saved to"; lossAndJitter="Loss / Jitter"
     }
     fr = @{
-        title="AUDIT CONNECTIVITE & GESTION ENERGIE"; target="Cible"; port="Port"; step="ETAPE"; adminOk="Execution Administrateur"; adminWarn="Pas Administrateur - Mitigation restreinte"; arpSection="Resolution ARP"; arpFlushed="Cache vide pour"; arpSkip="Flush ignore - elevation requise"; arpOk="ARP Resolu"; arpFail="ARP Echoue"; routeSection="Topologie de Routage"; latSection="Profil de Latence"; pings="pings"; firstPkt="Premier paquet"; timeout="Expiration"; avgRest="Moy (reste)"; minMax="Min / Max"; spikeDelta="Delta pic"; spikeWarn="NIC en economie d'energie"; latStable="Latence stable"; latFail="Reponses insuffisantes"; tcpSection="Sonde Port TCP"; portOpen="OUVERT"; portClosed="FERME ou Filtre"; httpSection="Accessibilite HTTP"; httpOk="HTTP a repondu"; httpFail="HTTP inaccessible"; nicSection="Gestion Energie NIC Local"; allowOff="Autoriser extinction PC"; wakeMagic="Reveil Magic Packet"; wakePattern="Reveil sur Motif"; summaryTitle="RESUME DE L'AUDIT"; allOk="Tous les tests passes."; someWarn="test(s) necessitent attention."; remTitle="PLAYBOOK DE REMEDIATION (ADMIN REQUIS)"; remNone="SYSTEME OPTIMISE - ZERO ANOMALIE"
+        title="AUDIT CONNECTIVITE & GESTION ENERGIE"; target="Cible"; port="Port"; step="ETAPE"; adminOk="Execution Administrateur"; adminWarn="Pas Administrateur - Mitigation restreinte"; arpSection="Resolution ARP"; arpFlushed="Cache vide pour"; arpSkip="Flush ignore - elevation requise"; arpOk="ARP Resolu"; arpFail="ARP Echoue"; routeSection="Topologie de Routage"; latSection="Profil de Latence"; pings="pings"; firstPkt="Premier paquet"; timeout="Expiration"; avgRest="Moy (reste)"; minMax="Min / Max"; spikeDelta="Delta pic"; spikeWarn="NIC en economie d'energie"; latStable="Latence stable"; latFail="Reponses insuffisantes"; tcpSection="Sonde Port TCP"; portOpen="OUVERT"; portClosed="FERME ou Filtre"; httpSection="Accessibilite HTTP"; httpOk="HTTP a repondu"; httpFail="HTTP inaccessible"; nicSection="Gestion Energie NIC Local"; allowOff="Autoriser extinction PC"; wakeMagic="Reveil Magic Packet"; wakePattern="Reveil sur Motif"; summaryTitle="RESUME DE L'AUDIT"; allOk="Tous les tests passes."; someWarn="test(s) necessitent attention."; remTitle="PLAYBOOK DE REMEDIATION (ADMIN REQUIS)"; remNone="SYSTEME OPTIMISE - ZERO ANOMALIE"; runRemediation="Voulez-vous appliquer ces correctifs automatiquement maintenant ? [y/N]"; remApplied="Correctifs appliques avec succes."; jsonExported="Export JSON enregistre sous"; lossAndJitter="Perte / Jitter"
     }
 }
 $C = @{ Title="White"; Head="Cyan"; OK="Green"; Warn="Yellow"; Err="Red"; Dim="DarkGray"; Accent="DarkCyan"; Reset="Gray" }
@@ -80,6 +81,7 @@ OPTIONS:
   -Configure            Launch interactive configuration UI
   -ResetConfig          Reset config file to defaults
   -NoLog                Disable log file generation
+  -ExportJson           Export audit results as JSON
   -Help                 Show this help
 "@
     wh $helpText $C.Reset
@@ -218,9 +220,42 @@ for ($i=1; $i -le $PingCount; $i++) {
 }
 
 if ($lats.Count -ge 1) {
-    $spike = if ($lats.Count -gt 1) { $lats[0] - ($lats[1..($lats.Count-1)] | Measure-Object -Average).Average } else { 0 }
+    $firstPacket = $lats[0]
+    $minLat = ($lats | Measure-Object -Minimum).Minimum
+    $maxLat = ($lats | Measure-Object -Maximum).Maximum
+
+    $jitter = 0
+    if ($lats.Count -gt 1) {
+        $restAvg = [math]::Round(($lats[1..($lats.Count-1)] | Measure-Object -Average).Average, 1)
+        $spike   = $firstPacket - $restAvg
+        if ($lats.Count -gt 2) {
+            $jitterSum = 0
+            for ($j=2; $j -lt $lats.Count; $j++) {
+                $jitterSum += [math]::Abs($lats[$j] - $lats[$j-1])
+            }
+            $jitter = [math]::Round($jitterSum / ($lats.Count - 2))
+        }
+    } else {
+        $restAvg = $firstPacket
+        $spike   = 0
+    }
+
+    $lossPct = [math]::Round(($timeouts / $PingCount) * 100)
+
+    wh "     +------------------------------------+" $C.Accent
+    wh ("     |  $($L.firstPkt.PadRight(16)): {0,6}ms           |" -f $firstPacket) $C.Reset
+    wh ("     |  $($L.avgRest.PadRight(16)): {0,6}ms           |" -f $restAvg) $C.Reset
+    wh ("     |  $($L.minMax.PadRight(16)): {0,4}ms / {1,4}ms    |" -f $minLat, $maxLat) $C.Reset
+
+    $spikeColor = if ($spike -gt 50) { $C.Warn } else { $C.OK }
+    wh ("     |  $($L.spikeDelta.PadRight(16)): {0,6}ms           |" -f $spike) $spikeColor
+    wh ("     |  $($L.lossAndJitter.PadRight(16)): {0,5}% / {1,4}ms    |" -f $lossPct, $jitter) $C.Reset
+    wh "     +------------------------------------+" $C.Accent
+
     if ($spike -gt 50) { Write-StatusLine "Spike" "+${spike}ms" "warn"; $report["Latency"] = "Spike: ${spike}ms"; $remediation += "Disable-NetAdapterPowerManagement -Name '*' -ErrorAction SilentlyContinue" }
     else { Write-StatusLine $L.latStable "" "ok"; $report["Latency"] = "Stable" }
+
+    if ($lossPct -gt 0) { $report["Packet Loss"] = "${lossPct}%" }
 } else { Write-StatusLine $L.latFail "" "err"; $report["Latency"] = "FAILED"; $remediation += "Test-NetConnection -ComputerName $ServerIP -DiagnoseRouting" }
 
 # [3] TCP & HTTP
@@ -297,8 +332,33 @@ wh "  +$('=' * 58)+" $C.Accent
 
 if ($remediation.Count -gt 0) {
     wh "`n  +$('=' * 58)+" $C.Err; wh "  |$("  $($L.remTitle)".PadRight(58))|" $C.Title; wh "  +$('=' * 58)+" $C.Err
-    $remediation | Select-Object -Unique | ForEach-Object { wh "  > $_" $C.Warn }
+    $uniqueRemediation = $remediation | Select-Object -Unique
+    $uniqueRemediation | ForEach-Object { wh "  > $_" $C.Warn }
     wh "  +$('-' * 58)+" $C.Err
+
+    if ($isAdmin) {
+        wh "`n  [?] $($L.runRemediation) " $C.Warn -nonl
+        $applyFixes = Read-Host
+        if ($applyFixes -match '^(y|yes)$') {
+            wh ""
+            foreach ($cmd in $uniqueRemediation) {
+                wh "      Executing: $cmd" $C.Dim
+                try { Invoke-Expression $cmd } catch { wh "      -> Failed: $_" $C.Err }
+            }
+            wh "  [OK] $($L.remApplied)" $C.OK
+        }
+    }
 } else { wh "`n  [OK] $($L.remNone)" $C.OK }
+
+if ($ExportJson) {
+    $outDir = if ($LogDir) { $LogDir } else { $ScriptRoot }
+    $jsonPath = Join-Path $outDir ("audit_{0}.json" -f (Get-Date -Format "yyyyMMdd_HHmmss"))
+    try {
+        $report | ConvertTo-Json | Set-Content $jsonPath -Encoding UTF8
+        wh "  [OK] $($L.jsonExported) $jsonPath" $C.Dim
+    } catch {
+        wh "  [XX] Failed to export JSON." $C.Warn
+    }
+}
 
 if ($LogFile) { try { $LogBuffer.ToString() | Set-Content $LogFile -Encoding UTF8 } catch {} }

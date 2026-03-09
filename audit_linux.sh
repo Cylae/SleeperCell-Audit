@@ -16,6 +16,7 @@ NO_LOG=0
 SHOW_HELP=0
 DO_CONFIGURE=0
 RESET_CONFIG=0
+EXPORT_JSON=0
 
 # CLI overrides
 CLI_IP=""
@@ -105,6 +106,10 @@ S_en=(
     [depOk]="Available"
     [remTitle]="REMEDIATION PLAYBOOK (RUN AS ROOT)"
     [remNone]="SYSTEM FULLY OPTIMIZED - ZERO ANOMALIES DETECTED"
+    [runRemediation]="Would you like to automatically apply these fixes now? [y/N]"
+    [remApplied]="Fixes applied successfully."
+    [jsonExported]="JSON Export saved to"
+    [lossAndJitter]="Loss / Jitter"
 )
 
 S_fr=(
@@ -171,6 +176,10 @@ S_fr=(
     [depOk]="Disponible"
     [remTitle]="PLAYBOOK DE REMEDIATION (ROOT REQUIS)"
     [remNone]="SYSTEME OPTIMISE - ZERO ANOMALIE DETECTEE"
+    [runRemediation]="Voulez-vous appliquer ces correctifs automatiquement maintenant ? [y/N]"
+    [remApplied]="Correctifs appliques avec succes."
+    [jsonExported]="Export JSON enregistre sous"
+    [lossAndJitter]="Perte / Jitter"
 )
 
 # ================================================================
@@ -372,6 +381,7 @@ OPTIONS:
   --configure           Launch interactive configuration UI
   --reset-config        Reset config file to defaults
   --no-log              Disable log file generation
+  --export-json         Export audit results as JSON
   --help / -h           Show this help
 EOF
     fi
@@ -390,6 +400,7 @@ while [[ $# -gt 0 ]]; do
         --configure)   DO_CONFIGURE=1; shift ;;
         --reset-config) RESET_CONFIG=1; shift ;;
         --no-log)      NO_LOG=1; shift ;;
+        --export-json) EXPORT_JSON=1; shift ;;
         --help|-h)     SHOW_HELP=1; shift ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
@@ -514,15 +525,29 @@ if (( ${#latencies[@]} >= 1 )); then
         (( v > max_lat )) && max_lat=$v
     done
 
+    jitter=0
     if (( ${#latencies[@]} >= 2 )); then
         sum=0
-        for (( j=1; j<${#latencies[@]}; j++ )); do (( sum += latencies[j] )) || true; done
+        jitter_sum=0
+        for (( j=1; j<${#latencies[@]}; j++ )); do
+            (( sum += latencies[j] )) || true
+            if (( j > 1 )); then
+                diff=$(( latencies[j] - latencies[j-1] ))
+                (( diff < 0 )) && diff=$(( -diff ))
+                (( jitter_sum += diff )) || true
+            fi
+        done
         rest_avg=$(( sum / (${#latencies[@]} - 1) ))
         spike=$(( first_pkt - rest_avg ))
+        if (( ${#latencies[@]} > 2 )); then
+            jitter=$(( jitter_sum / (${#latencies[@]} - 2) ))
+        fi
     else
         rest_avg=$first_pkt
         spike=0
     fi
+
+    loss_pct=$(( (timeout_count * 100) / PING_COUNT ))
 
     spike_color="$COK"; (( spike > 50 )) && spike_color="$CWARN"
 
@@ -531,6 +556,7 @@ if (( ${#latencies[@]} >= 1 )); then
     printf "${CRESET}     |  %-16s: %6dms           |${R}\n" "$(get_s avgRest)"  "$rest_avg"
     printf "${CRESET}     |  %-16s: %4dms / %4dms    |${R}\n" "$(get_s minMax)"  "$min_lat" "$max_lat"
     printf "${spike_color}     |  %-16s: %6dms           |${R}\n" "$(get_s spikeDelta)" "$spike"
+    printf "${CRESET}     |  %-16s: %5d%% / %4dms    |${R}\n" "$(get_s lossAndJitter)" "$loss_pct" "$jitter"
     printf "${ACCENT}     +------------------------------------+${R}\n\n"
 
     if (( spike > 50 )); then
@@ -540,6 +566,10 @@ if (( ${#latencies[@]} >= 1 )); then
     else
         write_status_line "$(get_s latStable)" "spike ${spike}ms" "ok"
         report_set "Latency" "Stable"
+    fi
+
+    if (( loss_pct > 0 )); then
+        report_set "Packet Loss" "${loss_pct}%"
     fi
 else
     write_status_line "$(get_s latFail)" "$timeout_count timeouts" "err"
@@ -636,16 +666,55 @@ if (( ${#REMEDIATION[@]} > 0 )); then
     printf "\n${CERR}  +%s+${R}\n" "$line_sum"
     printf "${TITLE}  |  %-56s|${R}\n" "$(get_s remTitle)"
     printf "${CERR}  +%s+${R}\n" "$line_sum"
-    # Sort and unique
-    printf "%s\n" "${REMEDIATION[@]}" | sort -u | while read -r cmd; do
+
+    unique_remediations=$(printf "%s\n" "${REMEDIATION[@]}" | sort -u)
+
+    echo "$unique_remediations" | while read -r cmd; do
         printf "${CWARN}  > %s${R}\n" "$cmd"
     done
     printf "${CERR}  +%s+${R}\n" "$line_sum"
+
+    if [[ $IS_ROOT -eq 1 ]]; then
+        printf "\n${CWARN}  [?] $(get_s runRemediation) ${R}"
+        read -r apply_fixes
+        if [[ "${apply_fixes,,}" == "y" || "${apply_fixes,,}" == "yes" ]]; then
+            wh ""
+            echo "$unique_remediations" | while read -r cmd; do
+                wh "      Executing: $cmd" "$DIM"
+                eval "$cmd" 2>/dev/null || wh "      -> Failed." "$CERR"
+            done
+            wh "  [OK] $(get_s remApplied)" "$COK"
+        fi
+    fi
 else
     printf "\n${COK}  [OK] $(get_s remNone)${R}\n"
 fi
 
 wh "\n  $(get_s completed) $(date '+%H:%M:%S')" "$DIM"
+
+if [[ $EXPORT_JSON -eq 1 ]]; then
+    mkdir -p "${LOG_DIR:-$SCRIPT_DIR}"
+    json_path="${LOG_DIR:-$SCRIPT_DIR}/audit_$(date '+%Y%m%d_%H%M%S').json"
+    if command -v python3 &>/dev/null; then
+        # Build JSON using Python to ensure escaping
+        json_str="{"
+        first=1
+        for key in "${REPORT_KEYS_ORDER[@]}"; do
+            val="${REPORT_VALS[$key]}"
+            if [[ $first -eq 1 ]]; then first=0; else json_str+=","; fi
+            # Primitive escaping
+            key_esc="${key//\"/\\\"}"
+            val_esc="${val//\"/\\\"}"
+            json_str+="\"$key_esc\":\"$val_esc\""
+        done
+        json_str+="}"
+        echo "$json_str" > "$json_path"
+        python3 -m json.tool "$json_path" > "${json_path}.tmp" && mv "${json_path}.tmp" "$json_path" || true
+        wh "  [OK] $(get_s jsonExported) $json_path" "$DIM"
+    else
+        wh "  [XX] Python3 required for JSON export." "$CWARN"
+    fi
+fi
 
 if [[ -n "${LOG_FILE:-}" ]]; then
     echo "$LOG_BUFFER" > "$LOG_FILE" 2>/dev/null || true

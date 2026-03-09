@@ -26,15 +26,16 @@ These scripts automate a full `Flush -> Probe -> Measure` lifecycle to diagnose 
 
 - 🌐 **Bilingual UI**: Full support for both English and French outputs (`--lang fr`).
 - 💾 **Persistent Config**: Save your target IP and ports via an interactive menu (`--configure`) to a local JSON file so you don't have to retype them.
-- 🛠️ **Auto-Remediation**: Generates a safe, copy-pasteable playbook of commands specific to your anomalies (e.g., disabling NIC power-save, adding firewall rules, fixing routing).
-- 📈 **Visual Profiling**: Beautiful CLI progress bars mapping latency spikes on the very first "cold start" packet.
+- 🛠️ **Interactive Auto-Remediation**: Generates a safe playbook of commands specific to your anomalies. If run as Administrator/root, the scripts will prompt you `[y/N]` to safely apply the fixes automatically.
+- 📈 **Visual Profiling**: Beautiful CLI progress bars mapping latency spikes, **Packet Loss %**, and **Jitter** on the very first "cold start" packet.
+- 📤 **Machine-Readable Exports**: Use the `--export-json` / `-ExportJson` flag to dump the final audit summary to a JSON file for monitoring integrations.
 - 🌍 **Cross-Platform**: Two perfectly synchronized scripts. Native `Bash` for Linux, native `.NET/PowerShell` for Windows.
 
 ---
 
 ## 🚀 Usage
 
-Execute the scripts via your terminal of choice. Running as **Administrator / root** is highly recommended to allow the script to flush the ARP cache and inspect low-level NIC power management settings.
+Execute the scripts via your terminal of choice. Running as **Administrator / root** is highly recommended to allow the script to flush the ARP cache, inspect low-level NIC power management settings, and execute the interactive Auto-Remediation playbook.
 
 ### 🐧 Linux (`audit_linux.sh`)
 ```bash
@@ -44,8 +45,8 @@ sudo ./audit_linux.sh
 # Interactive setup to save configuration
 ./audit_linux.sh --configure
 
-# CLI overrides for a quick one-off check
-sudo ./audit_linux.sh --server-ip 192.168.1.100 --port 51821 --lang fr
+# CLI overrides for a quick one-off check with JSON export
+sudo ./audit_linux.sh --server-ip 192.168.1.100 --port 51821 --lang fr --export-json
 ```
 
 ### 🪟 Windows (`audit_windows.ps1`)
@@ -57,8 +58,8 @@ sudo ./audit_linux.sh --server-ip 192.168.1.100 --port 51821 --lang fr
 # Interactive setup to save configuration
 .\audit_windows.ps1 -Configure
 
-# CLI overrides for a quick one-off check
-.\audit_windows.ps1 -ServerIP 192.168.1.100 -TargetPort 51821 -Lang fr
+# CLI overrides for a quick one-off check with JSON export
+.\audit_windows.ps1 -ServerIP 192.168.1.100 -TargetPort 51821 -Lang fr -ExportJson
 ```
 
 ---
