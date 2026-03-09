@@ -176,7 +176,7 @@ if ($isAdmin) { try { arp -d $ServerIP 2>$null } catch {}; wh "       $($L.arpFl
 $null = Test-Connection -ComputerName $ServerIP -Count 1 -Quiet -ErrorAction SilentlyContinue
 try { $arpEntry = arp -a | Select-String "\b$([regex]::Escape($ServerIP))\b" } catch { $arpEntry = $null }
 if ($arpEntry) { Write-StatusLine $L.arpOk $arpEntry.ToString().Trim() "ok"; $report["ARP"] = "Resolved" }
-else { Write-StatusLine $L.arpFail "" "err"; $report["ARP"] = "FAILED"; $remediation += "Clear-NetNeighbor -IPAddress $ServerIP -ErrorAction SilentlyContinue" }
+else { Write-StatusLine $L.arpFail "" "err"; $report["ARP"] = "FAILED"; $remediation += "Remove-NetNeighbor -IPAddress $ServerIP -Confirm:`$false -ErrorAction SilentlyContinue" }
 
 # [2] LATENCY
 Write-Section "$($L.latSection) ($PingCount $($L.pings))" 2
