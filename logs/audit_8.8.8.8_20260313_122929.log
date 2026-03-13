@@ -6,6 +6,16 @@
 
   [!!] Not root - Mitigation restricted (run as sudo for full features)
 
+  |  >> Dependency Check
+     [OK] ping -> Available
+     [OK] ip -> Available
+     [OK] awk -> Available
+     [OK] curl -> Available
+     [!!] traceroute -> Missing (optional)
+     [OK] host -> Available
+     [!!] ethtool -> Missing (optional)
+     [OK] systemctl -> Available
+
   |  >> ARP Resolution & Routing
      [OK] Route found -> Interface: eth0 (Gateway: 192.168.0.1)
      [OK] ARP Skipped -> Target is remote (Off-Link)
@@ -31,5 +41,5 @@
 
   |  >> OS Sleep/Suspend Targets
      [!!] Systemd Sleep Targets -> Active
-\n  Completed at 07:08:31
-  [OK] JSON Export saved to /app/logs/audit_8.8.8.8_20260309_070831.json
+\n  Completed at 12:29:34
+  [OK] JSON Export saved to /app/logs/audit_8.8.8.8_20260313_122934.json

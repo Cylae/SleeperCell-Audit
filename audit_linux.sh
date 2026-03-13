@@ -466,6 +466,19 @@ if [[ $EUID -eq 0 ]]; then wh "  [OK] $(get_s adminOk)" "$COK"; IS_ROOT=1
 else wh "  [!!] $(get_s adminWarn)" "$CWARN"; IS_ROOT=0; fi
 
 # ================================================================
+#  [0] DEPENDENCY CHECK
+# ================================================================
+write_section "$(get_s depCheck)" 0
+
+for cmd in ping ip awk curl traceroute host ethtool systemctl; do
+    if command -v "$cmd" &>/dev/null; then
+        write_status_line "$cmd" "$(get_s depOk)" "ok"
+    else
+        write_status_line "$cmd" "$(get_s depMissing)" "warn"
+    fi
+done
+
+# ================================================================
 #  [1] ARP RESOLUTION & ROUTING
 # ================================================================
 write_section "$(get_s arpSection)" 1
@@ -614,7 +627,7 @@ if timeout 2 bash -c "echo >/dev/tcp/${SERVER_IP}/${TARGET_PORT}" 2>/dev/null; t
 else
     write_status_line "$(get_s port) $TARGET_PORT" "$(get_s portClosed)" "err"
     report_set "Port $TARGET_PORT" "Closed"
-    REMEDIATION+=("ufw allow out $TARGET_PORT/tcp" "iptables -A OUTPUT -p tcp --dport $TARGET_PORT -j ACCEPT")
+    REMEDIATION+=("ufw status | grep -q 'Status: active' && ufw allow out $TARGET_PORT/tcp" "iptables -C OUTPUT -p tcp --dport $TARGET_PORT -j ACCEPT 2>/dev/null || iptables -A OUTPUT -p tcp --dport $TARGET_PORT -j ACCEPT")
 fi
 
 write_section "$(get_s httpSection)" 4
