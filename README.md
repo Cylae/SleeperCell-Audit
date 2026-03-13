@@ -30,7 +30,7 @@ These scripts automate a full `Flush -> Probe -> Measure` lifecycle to diagnose 
 - 📈 **Deep Network Profiling**: Beautiful CLI progress bars mapping latency spikes, **Packet Loss %**, and **Jitter** on the very first "cold start" packet. Also conducts Layer 3 **DNS Resolution** checks and **Traceroutes**.
 - ⚡ **OS Power Telemetry**: Inspects the deepest layers of your OS power management, reading `cpufreq` governors, systemd sleep targets, and `powercfg` active schemes.
 - 📤 **Machine-Readable Exports**: Use the `--export-json` / `-ExportJson` flag to dump the final audit summary to a JSON file for monitoring integrations. Log and JSON exports are automatically tagged with the target IP (e.g. `audit_192.168.1.254_20260309.log`).
-- 🌍 **Cross-Platform**: Two perfectly synchronized scripts. Native `Bash` for Linux, native `.NET/PowerShell` for Windows.
+- 🌍 **Cross-Platform**: Two perfectly synchronized scripts. Native `Bash` for Linux, native `.NET/PowerShell` for Windows. Both follow a strict 8-step execution parity including live Dependency Checks.
 
 ---
 

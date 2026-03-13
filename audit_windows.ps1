@@ -55,10 +55,10 @@ function Save-Config ($cfg) { try { $cfg | ConvertTo-Json | Set-Content $ConfigP
 
 $S = @{
     en = @{
-        title="CONNECTIVITY & POWER MANAGEMENT AUDIT"; target="Target"; port="Port"; step="STEP"; adminOk="Running as Administrator"; adminWarn="Not Administrator - Mitigation restricted"; arpSection="ARP Resolution"; arpFlushed="Cache flushed for"; arpSkip="Skipping cache flush - requires elevation"; arpOk="ARP Resolved"; arpFail="ARP Failed"; routeSection="Routing Topology"; latSection="Latency Profile"; pings="pings"; firstPkt="First packet"; timeout="Timeout"; avgRest="Avg (rest)"; minMax="Min / Max"; spikeDelta="Spike delta"; spikeWarn="NIC likely power-saving"; latStable="Latency stable"; latFail="Insufficient replies"; tcpSection="TCP Port Probe"; portOpen="OPEN"; portClosed="CLOSED or Filtered"; httpSection="HTTP Reachability"; httpOk="HTTP responded"; httpFail="HTTP unreachable"; traceSection="Traceroute (first 5 hops)"; traceNoCmd="tracert not available"; dnsSection="DNS Resolution Check"; dnsOk="DNS resolved"; dnsFail="DNS resolution failed"; nicSection="Local NIC Power Management"; allowOff="Allow PC to turn off"; wakeMagic="Wake on Magic Packet"; wakePattern="Wake on Pattern Match"; summaryTitle="AUDIT SUMMARY"; allOk="All checks passed."; someWarn="check(s) require attention."; remTitle="REMEDIATION PLAYBOOK (RUN AS ADMIN)"; remNone="SYSTEM FULLY OPTIMIZED - ZERO ANOMALIES DETECTED"; runRemediation="Would you like to automatically apply these fixes now? [y/N]"; remApplied="Fixes applied successfully."; jsonExported="JSON Export saved to"; lossAndJitter="Loss / Jitter"
+        title="CONNECTIVITY & POWER MANAGEMENT AUDIT"; target="Target"; port="Port"; step="STEP"; adminOk="Running as Administrator"; adminWarn="Not Administrator - Mitigation restricted"; arpSection="ARP Resolution"; arpFlushed="Cache flushed for"; arpSkip="Skipping cache flush - requires elevation"; arpOk="ARP Resolved"; arpFail="ARP Failed"; routeSection="Routing Topology"; latSection="Latency Profile"; pings="pings"; firstPkt="First packet"; timeout="Timeout"; avgRest="Avg (rest)"; minMax="Min / Max"; spikeDelta="Spike delta"; spikeWarn="NIC likely power-saving"; latStable="Latency stable"; latFail="Insufficient replies"; tcpSection="TCP Port Probe"; portOpen="OPEN"; portClosed="CLOSED or Filtered"; httpSection="HTTP Reachability"; httpOk="HTTP responded"; httpFail="HTTP unreachable"; traceSection="Traceroute (first 5 hops)"; traceNoCmd="tracert not available"; dnsSection="DNS Resolution Check"; dnsOk="DNS resolved"; dnsFail="DNS resolution failed"; nicSection="Local NIC Power Management"; allowOff="Allow PC to turn off"; wakeMagic="Wake on Magic Packet"; wakePattern="Wake on Pattern Match"; osSleep="OS Power Scheme"; summaryTitle="AUDIT SUMMARY"; allOk="All checks passed."; someWarn="check(s) require attention."; remTitle="REMEDIATION PLAYBOOK (RUN AS ADMIN)"; remNone="SYSTEM FULLY OPTIMIZED - ZERO ANOMALIES DETECTED"; runRemediation="Would you like to automatically apply these fixes now? [y/N]"; remApplied="Fixes applied successfully."; jsonExported="JSON Export saved to"; lossAndJitter="Loss / Jitter"; depCheck="Dependency Check"; depOk="Available"; depMissing="Missing (optional)"
     }
     fr = @{
-        title="AUDIT CONNECTIVITE & GESTION ENERGIE"; target="Cible"; port="Port"; step="ETAPE"; adminOk="Execution Administrateur"; adminWarn="Pas Administrateur - Mitigation restreinte"; arpSection="Resolution ARP"; arpFlushed="Cache vide pour"; arpSkip="Flush ignore - elevation requise"; arpOk="ARP Resolu"; arpFail="ARP Echoue"; routeSection="Topologie de Routage"; latSection="Profil de Latence"; pings="pings"; firstPkt="Premier paquet"; timeout="Expiration"; avgRest="Moy (reste)"; minMax="Min / Max"; spikeDelta="Delta pic"; spikeWarn="NIC en economie d'energie"; latStable="Latence stable"; latFail="Reponses insuffisantes"; tcpSection="Sonde Port TCP"; portOpen="OUVERT"; portClosed="FERME ou Filtre"; httpSection="Accessibilite HTTP"; httpOk="HTTP a repondu"; httpFail="HTTP inaccessible"; traceSection="Traceroute (5 premiers sauts)"; traceNoCmd="tracert non disponible"; dnsSection="Verification Resolution DNS"; dnsOk="DNS resolu"; dnsFail="Resolution DNS echouee"; nicSection="Gestion Energie NIC Local"; allowOff="Autoriser extinction PC"; wakeMagic="Reveil Magic Packet"; wakePattern="Reveil sur Motif"; summaryTitle="RESUME DE L'AUDIT"; allOk="Tous les tests passes."; someWarn="test(s) necessitent attention."; remTitle="PLAYBOOK DE REMEDIATION (ADMIN REQUIS)"; remNone="SYSTEME OPTIMISE - ZERO ANOMALIE"; runRemediation="Voulez-vous appliquer ces correctifs automatiquement maintenant ? [y/N]"; remApplied="Correctifs appliques avec succes."; jsonExported="Export JSON enregistre sous"; lossAndJitter="Perte / Jitter"
+        title="AUDIT CONNECTIVITE & GESTION ENERGIE"; target="Cible"; port="Port"; step="ETAPE"; adminOk="Execution Administrateur"; adminWarn="Pas Administrateur - Mitigation restreinte"; arpSection="Resolution ARP"; arpFlushed="Cache vide pour"; arpSkip="Flush ignore - elevation requise"; arpOk="ARP Resolu"; arpFail="ARP Echoue"; routeSection="Topologie de Routage"; latSection="Profil de Latence"; pings="pings"; firstPkt="Premier paquet"; timeout="Expiration"; avgRest="Moy (reste)"; minMax="Min / Max"; spikeDelta="Delta pic"; spikeWarn="NIC en economie d'energie"; latStable="Latence stable"; latFail="Reponses insuffisantes"; tcpSection="Sonde Port TCP"; portOpen="OUVERT"; portClosed="FERME ou Filtre"; httpSection="Accessibilite HTTP"; httpOk="HTTP a repondu"; httpFail="HTTP inaccessible"; traceSection="Traceroute (5 premiers sauts)"; traceNoCmd="tracert non disponible"; dnsSection="Verification Resolution DNS"; dnsOk="DNS resolu"; dnsFail="Resolution DNS echouee"; nicSection="Gestion Energie NIC Local"; allowOff="Autoriser extinction PC"; wakeMagic="Reveil Magic Packet"; wakePattern="Reveil sur Motif"; osSleep="Plan d'Alimentation OS"; summaryTitle="RESUME DE L'AUDIT"; allOk="Tous les tests passes."; someWarn="test(s) necessitent attention."; remTitle="PLAYBOOK DE REMEDIATION (ADMIN REQUIS)"; remNone="SYSTEME OPTIMISE - ZERO ANOMALIE"; runRemediation="Voulez-vous appliquer ces correctifs automatiquement maintenant ? [y/N]"; remApplied="Correctifs appliques avec succes."; jsonExported="Export JSON enregistre sous"; lossAndJitter="Perte / Jitter"; depCheck="Verification Dependances"; depOk="Disponible"; depMissing="Absent (optionnel)"
     }
 }
 $C = @{ Title="White"; Head="Cyan"; OK="Green"; Warn="Yellow"; Err="Red"; Dim="DarkGray"; Accent="DarkCyan"; Reset="Gray" }
@@ -170,13 +170,13 @@ if ($isAdmin) { wh "  [OK] $($L.adminOk)" $C.OK } else { wh "  [!!] $($L.adminWa
 # ================================================================
 #  [0] DEPENDENCY CHECK
 # ================================================================
-Write-Section "Dependency Check" 0
+Write-Section $L.depCheck 0
 
 foreach ($cmd in @("ping", "arp", "tracert", "powercfg")) {
     if (Get-Command $cmd -ErrorAction SilentlyContinue) {
-        Write-StatusLine $cmd "Available" "ok"
+        Write-StatusLine $cmd $L.depOk "ok"
     } else {
-        Write-StatusLine $cmd "Missing (optional)" "warn"
+        Write-StatusLine $cmd $L.depMissing "warn"
     }
 }
 
@@ -420,8 +420,11 @@ if (-not (Get-Command Get-NetAdapter -ErrorAction SilentlyContinue)) {
         }
     }
 }
+
+# [8] OS POWER TARGETS & CPU GOVERNOR
+Write-Section $L.osSleep 8
 $plan = try { powercfg /getactivescheme 2>&1 } catch { "" }
-if ($plan -notmatch "High performance|Performances optimales" -and $plan -ne "") { $report["OS Power"] = "Not Optimal"; $remediation += "powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" } else { $report["OS Power"] = "High Perf" }
+if ($plan -notmatch "High performance|Performances optimales" -and $plan -ne "") { Write-StatusLine "Power Plan" "Not Optimal" "warn"; $report["OS Power"] = "Not Optimal"; $remediation += "powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" } else { Write-StatusLine "Power Plan" "High Perf" "ok"; $report["OS Power"] = "High Perf" }
 
 # SUMMARY & PLAYBOOK
 wh "`n  +$('=' * 58)+" $C.Accent; wh "  |$("  $($L.summaryTitle)".PadRight(58))|" $C.Title; wh "  +$('=' * 58)+" $C.Accent
