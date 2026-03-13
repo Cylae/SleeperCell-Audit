@@ -43,11 +43,11 @@ Target is remote (Off-Link)
           [
 
 ............................
-]    2ms
+]    1ms
      +------------------------------------+
-     |  First packet    :      2ms           |
-     |  Avg (rest)      :      2ms           |
-     |  Min / Max       :    2ms /    2ms    |
+     |  First packet    :      1ms           |
+     |  Avg (rest)      :      1ms           |
+     |  Min / Max       :    1ms /    1ms    |
      |  Spike delta     :      0ms           |
      |  Loss / Jitter   :     0% /    0ms    |
      +------------------------------------+
@@ -94,6 +94,14 @@ Not supported
  ->
 Get-NetAdapter cmdlets unavailable on this OS
 
+  +--[ STEP 8 ]------------------------------
+  |  >> OS Power Scheme
+  +--------------------------------------------------
+     [OK]
+Power Plan
+ ->
+High Perf
+
   +==========================================================+
   |  AUDIT SUMMARY                                           |
   +==========================================================+
@@ -108,6 +116,6 @@ Get-NetAdapter cmdlets unavailable on this OS
   +==========================================================+
   |  REMEDIATION PLAYBOOK (RUN AS ADMIN)                     |
   +==========================================================+
-  > New-NetFirewallRule -DisplayName 'WireGuard UI' -Direction Outbound -LocalPort 51821 -Protocol TCP -Action Allow
+  > if (-not (Get-NetFirewallRule -DisplayName 'WireGuard UI' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -DisplayName 'WireGuard UI' -Direction Outbound -LocalPort 51821 -Protocol TCP -Action Allow }
   +----------------------------------------------------------+
-  [OK] JSON Export saved to /app/logs/audit_8.8.8.8_20260309_070842.json
+  [OK] JSON Export saved to /app/logs/audit_8.8.8.8_20260313_122944.json
