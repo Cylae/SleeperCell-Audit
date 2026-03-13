@@ -299,13 +299,14 @@ $tcpClient = New-Object System.Net.Sockets.TcpClient
 try {
     $connectTask = $tcpClient.ConnectAsync($ServerIP, $TargetPort)
     $success = $connectTask.Wait(2000)
-    if ($success -and $tcpClient.Connected) { Write-StatusLine "$($L.port) $TargetPort" $L.portOpen "ok"; $report["TCP"] = "Open"; $tcpClient.Close() }
-    else { Write-StatusLine "$($L.port) $TargetPort" $L.portClosed "err"; $report["TCP"] = "Closed/Filtered"; $remediation += "New-NetFirewallRule -DisplayName 'WireGuard UI' -Direction Outbound -LocalPort $TargetPort -Protocol TCP -Action Allow" }
+    if ($success -and $tcpClient.Connected) { Write-StatusLine "$($L.port) $TargetPort" $L.portOpen "ok"; $report["TCP"] = "Open" }
+    else { Write-StatusLine "$($L.port) $TargetPort" $L.portClosed "err"; $report["TCP"] = "Closed/Filtered"; $remediation += "if (-not (Get-NetFirewallRule -DisplayName 'WireGuard UI' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -DisplayName 'WireGuard UI' -Direction Outbound -LocalPort $TargetPort -Protocol TCP -Action Allow }" }
 } catch {
     Write-StatusLine "$($L.port) $TargetPort" $L.portClosed "err"
     $report["TCP"] = "Closed/Filtered"
-    if ($tcpClient) { try { $tcpClient.Close() } catch {} }
-    $remediation += "New-NetFirewallRule -DisplayName 'WireGuard UI' -Direction Outbound -LocalPort $TargetPort -Protocol TCP -Action Allow"
+    $remediation += "if (-not (Get-NetFirewallRule -DisplayName 'WireGuard UI' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -DisplayName 'WireGuard UI' -Direction Outbound -LocalPort $TargetPort -Protocol TCP -Action Allow }"
+} finally {
+    if ($tcpClient) { try { $tcpClient.Close(); $tcpClient.Dispose() } catch {} }
 }
 
 Write-Section $L.httpSection 4
@@ -313,7 +314,8 @@ try {
     $req = [System.Net.HttpWebRequest]::Create("http://${ServerIP}:${TargetPort}")
     $req.Timeout = 2000
     $req.AllowAutoRedirect = $false
-    Write-StatusLine $L.httpOk "HTTP $([int]$req.GetResponse().StatusCode)" "ok"
+    $resp = $req.GetResponse()
+    Write-StatusLine $L.httpOk "HTTP $([int]$resp.StatusCode)" "ok"
     $report["HTTP"] = "OK"
 }
 catch [System.Net.WebException] {
@@ -334,6 +336,9 @@ catch [System.Net.WebException] {
 catch {
     Write-StatusLine $L.httpFail "" "err"
     $report["HTTP"] = "FAILED"
+}
+finally {
+    if ($resp) { try { $resp.Close(); $resp.Dispose() } catch {} }
 }
 
 # [5] TRACEROUTE  (first 5 hops)

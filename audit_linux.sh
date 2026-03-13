@@ -614,7 +614,7 @@ if timeout 2 bash -c "echo >/dev/tcp/${SERVER_IP}/${TARGET_PORT}" 2>/dev/null; t
 else
     write_status_line "$(get_s port) $TARGET_PORT" "$(get_s portClosed)" "err"
     report_set "Port $TARGET_PORT" "Closed"
-    REMEDIATION+=("ufw allow out $TARGET_PORT/tcp" "iptables -A OUTPUT -p tcp --dport $TARGET_PORT -j ACCEPT")
+    REMEDIATION+=("ufw status | grep -q 'Status: active' && ufw allow out $TARGET_PORT/tcp" "iptables -C OUTPUT -p tcp --dport $TARGET_PORT -j ACCEPT 2>/dev/null || iptables -A OUTPUT -p tcp --dport $TARGET_PORT -j ACCEPT")
 fi
 
 write_section "$(get_s httpSection)" 4
